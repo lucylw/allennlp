@@ -62,13 +62,20 @@ class BooleanF1(Metric):
         -------
         Precison, recall, accuracy, and F1 score
         """
-        precision = float(self._true_positives) / (float(self._true_positives) + float(self._false_positives))
-        recall = float(self._true_positives) / (float(self._true_positives) + float(self._false_negatives))
+        precision = 0.0
+        recall = 0.0
+        f1_score = 0.0
+
+        if self._true_positives + self._false_positives > 0:
+            precision = float(self._true_positives) / (float(self._true_positives) + float(self._false_positives))
+
+        if self._true_positives + self._false_negatives > 0:
+            recall = float(self._true_positives) / (float(self._true_positives) + float(self._false_negatives))
+
         accuracy = (float(self._true_positives) + float(self._true_negatives)) / float(self._total_count)
+
         if precision + recall > 0.:
             f1_score = 2.0 * precision * recall / (precision + recall)
-        else:
-            f1_score = 0.
         if reset:
             self.reset()
         return precision, recall, accuracy, f1_score

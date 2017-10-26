@@ -34,6 +34,7 @@ class TokenCharactersIndexer(TokenIndexer[List[int]]):
                  character_tokenizer: CharacterTokenizer = CharacterTokenizer()) -> None:
         self._namespace = namespace
         self._character_tokenizer = character_tokenizer
+        self._min_padding_size = 5
 
     @overrides
     def count_vocab_items(self, token: Token, counter: Dict[str, Dict[str, int]]):
@@ -74,7 +75,7 @@ class TokenCharactersIndexer(TokenIndexer[List[int]]):
                            desired_num_tokens: int,
                            padding_lengths: Dict[str, int]) -> List[List[int]]:
         padded_tokens = pad_sequence_to_length(tokens, desired_num_tokens, default_value=lambda: [])
-        desired_token_length = padding_lengths['num_token_characters']
+        desired_token_length = max([self._min_padding_size, padding_lengths['num_token_characters']])
         longest_token: List[int] = max(tokens, key=len, default=[])
         padding_index = 0
         if desired_token_length > len(longest_token):

@@ -21,7 +21,7 @@ DEFAULT_PREDICTORS = {
         'bidaf': 'machine-comprehension',
         'simple_tagger': 'simple-tagger',
         'crf_tagger': 'crf-tagger',
-        'ontoemma': 'ontoemma'
+        'ontoemma': 'ontoemma-predictor'
 }
 
 def main(prog: str = None,
