@@ -40,11 +40,8 @@ class ListTextFieldEmbedder(TextFieldEmbedder):
         for key in keys:
             tensor = text_field_input[key]
             embedder = self._token_embedders[key]
-            list_representations = []
-            for row in tensor:
-                token_vectors = embedder(row)
-                list_representations.append(token_vectors)
-            embedded_representations.append(torch.stack(list_representations))
+            token_vectors = embedder(tensor)
+            embedded_representations.append(token_vectors)
 
         return torch.cat(embedded_representations, dim=-1)
 

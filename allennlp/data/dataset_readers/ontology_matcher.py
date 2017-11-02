@@ -4,12 +4,13 @@ import logging
 from overrides import overrides
 import json
 import tqdm
+import random
 
 from allennlp.common import Params
 from allennlp.common.checks import ConfigurationError
 from allennlp.common.file_utils import cached_path
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer
-from allennlp.data.fields import Field, TextField, BooleanField, ListField
+from allennlp.data.fields import Field, TextField, ListField, BooleanField
 from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer, TokenCharactersIndexer
 from allennlp.data.instance import Instance
 from allennlp.data.dataset import Dataset
@@ -18,11 +19,11 @@ from allennlp.data.dataset_readers.dataset_reader import DatasetReader
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
+
 @DatasetReader.register("ontology_matcher")
 class OntologyMatchingDatasetReader(DatasetReader):
     """
     Reads instances from a jsonlines file where each line is in the following format:
-
     {"match": X, "source": {kb_entity}, "target: {kb_entity}}
      X in [0, 1]
      kb_entity is a slightly modified KBEntity in json with fields:
@@ -31,9 +32,7 @@ class OntologyMatchingDatasetReader(DatasetReader):
         definition
         other_contexts
         relationships
-
     and converts it into a ``Dataset`` suitable for ontology matching.
-
     Parameters
     ----------
     token_delimiter: ``str``, optional (default=``None``)
@@ -52,9 +51,8 @@ class OntologyMatchingDatasetReader(DatasetReader):
                                {'tokens': SingleIdTokenIndexer(namespace="tokens"),
                                 'token_characters': TokenCharactersIndexer(namespace="token_characters")}
         self._token_only_indexer = token_only_indexer or \
-                               {'tokens': SingleIdTokenIndexer(namespace="tokens")}
+                                   {'tokens': SingleIdTokenIndexer(namespace="tokens")}
         self._tokenizer = tokenizer or WordTokenizer()
-        self._empty_text_field = TextField([], self._token_only_indexer).empty_field()
 
     @overrides
     def read(self, file_path):
@@ -75,14 +73,9 @@ class OntologyMatchingDatasetReader(DatasetReader):
                 # convert entry to instance and append to instances
                 instances.append(self.text_to_instance(s_ent, t_ent, label))
 
-                if label == 1:
-                    for i in range(0, 4):
-                        instances.append(self.text_to_instance(s_ent, t_ent, label))
-
         if not instances:
             raise ConfigurationError("No instances were read from the given filepath {}. "
                                      "Is the path correct?".format(file_path))
-
         return Dataset(instances)
 
     @overrides
@@ -93,8 +86,8 @@ class OntologyMatchingDatasetReader(DatasetReader):
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
         # tokenize names
-        s_name_tokens = self._tokenizer.tokenize(s_ent['canonical_name'])
-        t_name_tokens = self._tokenizer.tokenize(t_ent['canonical_name'])
+        s_name_tokens = self._tokenizer.tokenize('00000 ' + s_ent['canonical_name'])
+        t_name_tokens = self._tokenizer.tokenize('00000 ' + t_ent['canonical_name'])
 
         # add entity name fields
         fields['s_ent_name'] = TextField(s_name_tokens, self._name_token_indexers)
@@ -102,28 +95,32 @@ class OntologyMatchingDatasetReader(DatasetReader):
 
         # add entity alias fields
         fields['s_ent_aliases'] = ListField(
-            [TextField(self._tokenizer.tokenize(a), self._token_only_indexer)
+            [TextField(self._tokenizer.tokenize(a), self._name_token_indexers)
              for a in s_ent['aliases']]
         )
         fields['t_ent_aliases'] = ListField(
-            [TextField(self._tokenizer.tokenize(a), self._token_only_indexer)
+            [TextField(self._tokenizer.tokenize(a), self._name_token_indexers)
              for a in t_ent['aliases']]
         )
-
-        empty_textfield = TextField(self._tokenizer.tokenize("NONE"), self._token_only_indexer)
 
         # add entity definition fields
         if s_ent['definition']:
             fields['s_ent_def'] = TextField(self._tokenizer.tokenize(s_ent['definition']), self._token_only_indexer)
         else:
-            fields['s_ent_def'] = empty_textfield
+            fields['s_ent_def'] = TextField(self._tokenizer.tokenize('00000'), self._token_only_indexer)
 
         if t_ent['definition']:
             fields['t_ent_def'] = TextField(self._tokenizer.tokenize(t_ent['definition']), self._token_only_indexer)
         else:
-            fields['t_ent_def'] = empty_textfield
+            fields['t_ent_def'] = TextField(self._tokenizer.tokenize('00000'), self._token_only_indexer)
 
-        # add entity context fields
+        # # randomly sample up to 10 contexts only
+        # sample_10 = lambda l: l if len(l) <= 10 else random.sample(l, 10)
+        #
+        # # add entity context fields
+        # s_contexts = sample_10(s_ent['other_contexts'])
+        # t_contexts = sample_10(t_ent['other_contexts'])
+
         s_contexts = s_ent['other_contexts']
         t_contexts = t_ent['other_contexts']
 
@@ -133,7 +130,9 @@ class OntologyMatchingDatasetReader(DatasetReader):
                  for c in s_contexts]
             )
         else:
-            fields['s_ent_context'] = ListField([empty_textfield])
+            fields['s_ent_context'] = ListField(
+                [TextField(self._tokenizer.tokenize('00000'), self._token_only_indexer)]
+            )
 
         if t_contexts:
             fields['t_ent_context'] = ListField(
@@ -141,7 +140,9 @@ class OntologyMatchingDatasetReader(DatasetReader):
                  for c in t_contexts]
             )
         else:
-            fields['t_ent_context'] = ListField([empty_textfield])
+            fields['t_ent_context'] = ListField(
+                [TextField(self._tokenizer.tokenize('00000'), self._token_only_indexer)]
+            )
 
         # add boolean label (0 = no match, 1 = match)
         fields['label'] = BooleanField(label)
