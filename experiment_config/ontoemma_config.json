@@ -24,7 +24,9 @@
     "name_text_field_embedder": {
             "tokens": {
                     "type": "embedding",
-                    "embedding_dim": 25
+                    "pretrained_file": "/net/nfs.corp/s2-research/scigraph/data/w2v/s2_data/weights.txt",
+                    "embedding_dim": 300,
+                    "trainable": false
             },
             "token_characters": {
                     "type": "character_encoding",
@@ -34,7 +36,7 @@
                     "encoder": {
                       "type": "cnn",
                       "embedding_dim": 8,
-                      "num_filters": 25,
+                      "num_filters": 100,
                       "ngram_filter_sizes": [5]
                     },
                     "dropout": 0.2
@@ -43,12 +45,14 @@
     "context_text_field_embedder": {
             "tokens": {
                     "type": "embedding",
-                    "embedding_dim": 50
+                    "pretrained_file": "/net/nfs.corp/s2-research/scigraph/data/w2v/s2_data/weights.txt",
+                    "embedding_dim": 300,
+                    "trainable": false
             }
     },
     "name_rnn_encoder": {
       "type": "rnn",
-      "input_size": 50,
+      "input_size": 400,
       "hidden_size": 50,
       "num_layers": 2,
       "dropout": 0.2,
@@ -56,7 +60,7 @@
     },
     "context_encoder": {
       "type": "lstm",
-      "input_size": 50,
+      "input_size": 300,
       "hidden_size": 50,
       "num_layers": 2,
       "dropout": 0.2,
@@ -79,12 +83,13 @@
   },
   "iterator": {
     "type": "bucket",
-    "sorting_keys": [["s_ent_context", "num_tokens"],
+    "sorting_keys": [
+                     ["s_ent_context", "num_tokens"],
                      ["t_ent_context", "num_tokens"],
-                     ["s_ent_aliases", "num_tokens"],
-                     ["t_ent_aliases", "num_tokens"],
                      ["s_ent_def", "num_tokens"],
                      ["t_ent_def", "num_tokens"],
+                     ["s_ent_aliases", "num_tokens"],
+                     ["t_ent_aliases", "num_tokens"],
                      ["s_ent_name", "num_tokens"],
                      ["t_ent_name", "num_tokens"]],
     "batch_size": 16
@@ -93,6 +98,6 @@
     "optimizer": "adam",
     "num_epochs": 50,
     "patience": 8,
-    "cuda_device": 5
+    "cuda_device": -1
   }
 }

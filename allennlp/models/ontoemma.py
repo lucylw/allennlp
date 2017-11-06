@@ -29,24 +29,17 @@ class OntoEmmaNN(Model):
         super(OntoEmmaNN, self).__init__(vocab, regularizer)
 
         self.name_text_field_embedder = name_text_field_embedder
-        distributed_name_embedder = BasicTextFieldEmbedder({
+        self.distributed_name_embedder = BasicTextFieldEmbedder({
             k: TimeDistributed(v) for k, v in name_text_field_embedder._token_embedders.items()
         })
-        self.distributed_name_embedder = distributed_name_embedder
-
         self.context_text_field_embedder = context_text_field_embedder
-        distributed_context_embedder = BasicTextFieldEmbedder({
+        self.distributed_context_embedder = BasicTextFieldEmbedder({
             k: TimeDistributed(v) for k, v in context_text_field_embedder._token_embedders.items()
         })
-        self.distributed_context_embedder = distributed_context_embedder
-
         self.name_rnn_encoder = name_rnn_encoder
-
         self.context_encoder = context_encoder
-
         self.siamese_feedforward = siamese_feedforward
         self.decision_feedforward = decision_feedforward
-
         self.sigmoid = torch.nn.Sigmoid()
         self.accuracy = BooleanF1()
         self.loss = torch.nn.BCELoss()
@@ -129,13 +122,15 @@ class OntoEmmaNN(Model):
             [encoded_s_ent_name,
              average_encoded_s_ent_aliases,
              encoded_s_ent_def,
-             average_encoded_s_ent_context],
+             average_encoded_s_ent_context
+             ],
             dim=-1)
         t_ent_input = torch.cat(
             [encoded_t_ent_name,
              average_encoded_t_ent_aliases,
              encoded_t_ent_def,
-             average_encoded_t_ent_context],
+             average_encoded_t_ent_context
+             ],
             dim=-1)
 
         # run both entity representations through feed forward network

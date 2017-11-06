@@ -51,7 +51,7 @@ class OntologyMatchingDatasetReader(DatasetReader):
                                {'tokens': SingleIdTokenIndexer(namespace="tokens"),
                                 'token_characters': TokenCharactersIndexer(namespace="token_characters")}
         self._token_only_indexer = token_only_indexer or \
-                                   {'tokens': SingleIdTokenIndexer(namespace="tokens")}
+                               {'tokens': SingleIdTokenIndexer(namespace="tokens")}
         self._tokenizer = tokenizer or WordTokenizer()
 
     @overrides
@@ -73,6 +73,11 @@ class OntologyMatchingDatasetReader(DatasetReader):
                 # convert entry to instance and append to instances
                 instances.append(self.text_to_instance(s_ent, t_ent, label))
 
+                # upsample positives
+                if label == 1:
+                    for i in range(4):
+                        instances.append(instances[-1])
+
         if not instances:
             raise ConfigurationError("No instances were read from the given filepath {}. "
                                      "Is the path correct?".format(file_path))
@@ -83,6 +88,10 @@ class OntologyMatchingDatasetReader(DatasetReader):
                          s_ent: dict,
                          t_ent: dict,
                          label: str = None) -> Instance:
+
+        # randomly sample up to 10 contexts only
+        sample_n = lambda l: l[0] if len(l[0]) <= l[1] else random.sample(l[0], l[1])
+
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
         # tokenize names
@@ -93,14 +102,17 @@ class OntologyMatchingDatasetReader(DatasetReader):
         fields['s_ent_name'] = TextField(s_name_tokens, self._name_token_indexers)
         fields['t_ent_name'] = TextField(t_name_tokens, self._name_token_indexers)
 
+        s_aliases = sample_n((s_ent['aliases'], 20))
+        t_aliases = sample_n((t_ent['aliases'], 20))
+
         # add entity alias fields
         fields['s_ent_aliases'] = ListField(
             [TextField(self._tokenizer.tokenize(a), self._name_token_indexers)
-             for a in s_ent['aliases']]
+             for a in s_aliases]
         )
         fields['t_ent_aliases'] = ListField(
             [TextField(self._tokenizer.tokenize(a), self._name_token_indexers)
-             for a in t_ent['aliases']]
+             for a in t_aliases]
         )
 
         # add entity definition fields
@@ -114,15 +126,9 @@ class OntologyMatchingDatasetReader(DatasetReader):
         else:
             fields['t_ent_def'] = TextField(self._tokenizer.tokenize('00000'), self._token_only_indexer)
 
-        # # randomly sample up to 10 contexts only
-        # sample_10 = lambda l: l if len(l) <= 10 else random.sample(l, 10)
-        #
-        # # add entity context fields
-        # s_contexts = sample_10(s_ent['other_contexts'])
-        # t_contexts = sample_10(t_ent['other_contexts'])
-
-        s_contexts = s_ent['other_contexts']
-        t_contexts = t_ent['other_contexts']
+        # add entity context fields
+        s_contexts = sample_n((s_ent['other_contexts'], 20))
+        t_contexts = sample_n((t_ent['other_contexts'], 20))
 
         if s_contexts:
             fields['s_ent_context'] = ListField(
